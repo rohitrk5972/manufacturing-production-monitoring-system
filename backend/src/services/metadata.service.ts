@@ -17,7 +17,7 @@ export class MetadataService {
 
   async getShifts() {
     const result = await query(
-      'SELECT id, shift_number, name, start_time, end_time, duration_hours FROM shifts ORDER BY shift_number ASC'
+      'SELECT id, code, shift_number, name, start_time, end_time, duration_hours FROM shifts ORDER BY shift_number ASC'
     );
     return result.rows;
   }
@@ -51,7 +51,7 @@ export class MetadataService {
     const result = await query(
       `SELECT 
         lda.line_id,
-        lda.production_date,
+        lda.production_date::text,
         lda.product_id,
         p.sku AS product_sku,
         p.name AS product_name,

@@ -6,10 +6,12 @@ import {
   ProductionRecord,
   KPIStats,
   DailyProductionPoint,
+  DailyByLineProductPoint,
   MonthlyProductionPoint,
   ShiftComparisonPoint,
   ProductComparisonPoint,
   LineComparisonPoint,
+  LineSpeedTrendPoint,
   ActiveDailyAllocation,
   PaginatedRecords,
 } from '../types';
@@ -92,6 +94,11 @@ export const api = {
     return request<DailyProductionPoint[]>(`/analytics/daily-production${qs ? `?${qs}` : ''}`);
   },
 
+  getDailyByLineAndProduct: (params?: Record<string, any>) => {
+    const qs = new URLSearchParams(params).toString();
+    return request<DailyByLineProductPoint[]>(`/analytics/daily-by-line-product${qs ? `?${qs}` : ''}`);
+  },
+
   getMonthlyProduction: (params?: Record<string, any>) => {
     const qs = new URLSearchParams(params).toString();
     return request<MonthlyProductionPoint[]>(`/analytics/monthly-production${qs ? `?${qs}` : ''}`);
@@ -110,5 +117,10 @@ export const api = {
   getLineComparison: (params?: Record<string, any>) => {
     const qs = new URLSearchParams(params).toString();
     return request<LineComparisonPoint[]>(`/analytics/line-comparison${qs ? `?${qs}` : ''}`);
+  },
+
+  getLineSpeedTrends: (params?: Record<string, any>) => {
+    const qs = new URLSearchParams(params).toString();
+    return request<LineSpeedTrendPoint[]>(`/analytics/line-speed-trends${qs ? `?${qs}` : ''}`);
   },
 };

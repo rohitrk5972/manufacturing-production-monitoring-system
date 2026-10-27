@@ -20,6 +20,15 @@ export class AnalyticsController {
     }
   }
 
+  async getDailyByLineAndProduct(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await analyticsService.getDailyByLineAndProduct(req.query as any);
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async getMonthlyProduction(req: Request, res: Response, next: NextFunction) {
     try {
       const data = await analyticsService.getMonthlyProduction(req.query as any);
@@ -50,6 +59,15 @@ export class AnalyticsController {
   async getLineComparison(req: Request, res: Response, next: NextFunction) {
     try {
       const data = await analyticsService.getLineComparison(req.query as any);
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getLineSpeedTrends(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await analyticsService.getLineSpeedTrends(req.query as any);
       res.json(data);
     } catch (err) {
       next(err);

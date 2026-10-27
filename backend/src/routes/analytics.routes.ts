@@ -18,6 +18,12 @@ analyticsRouter.get(
 );
 
 analyticsRouter.get(
+  '/daily-by-line-product',
+  validateQuery(analyticsFilterSchema),
+  (req, res, next) => analyticsController.getDailyByLineAndProduct(req, res, next)
+);
+
+analyticsRouter.get(
   '/monthly-production',
   validateQuery(analyticsFilterSchema),
   (req, res, next) => analyticsController.getMonthlyProduction(req, res, next)
@@ -39,4 +45,10 @@ analyticsRouter.get(
   '/line-comparison',
   validateQuery(analyticsFilterSchema),
   (req, res, next) => analyticsController.getLineComparison(req, res, next)
+);
+
+analyticsRouter.get(
+  '/line-speed-trends',
+  validateQuery(analyticsFilterSchema),
+  (req, res, next) => analyticsController.getLineSpeedTrends(req, res, next)
 );

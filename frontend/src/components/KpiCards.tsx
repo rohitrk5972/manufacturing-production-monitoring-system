@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, CheckCircle2, AlertTriangle, Zap, Gauge, Layers } from 'lucide-react';
+import { Package, Zap, Gauge, Layers, GaugeCircle, CheckCircle2 } from 'lucide-react';
 import { KPIStats } from '../types';
 
 interface KpiCardsProps {
@@ -10,93 +10,91 @@ interface KpiCardsProps {
 export const KpiCards: React.FC<KpiCardsProps> = ({ stats, loading }) => {
   if (loading || !stats) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-pulse">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 animate-pulse">
         {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-28 bg-slate-900/60 rounded-xl border border-slate-800 p-4"></div>
+          <div key={i} className="h-24 bg-white rounded-lg border border-slate-200 p-4"></div>
         ))}
       </div>
     );
   }
 
   const yieldRate = stats.total_units > 0 
-    ? ((stats.good_units / stats.total_units) * 100).toFixed(2)
-    : '100.00';
+    ? ((stats.good_units / stats.total_units) * 100).toFixed(1)
+    : '100.0';
 
   const cards = [
     {
-      title: 'Total Output',
+      title: 'Total Production',
       value: stats.total_units.toLocaleString(),
       unit: 'units',
-      sub: `${stats.total_records} shift runs`,
+      sub: `${stats.good_units.toLocaleString()} good units`,
       icon: Package,
-      color: 'text-sky-400',
-      bg: 'bg-sky-500/10 border-sky-500/20',
+      accent: 'border-l-sky-500 text-sky-600',
     },
     {
-      title: 'Good Units',
-      value: stats.good_units.toLocaleString(),
-      unit: 'units',
-      sub: `${yieldRate}% First-Pass Yield`,
-      icon: CheckCircle2,
-      color: 'text-emerald-400',
-      bg: 'bg-emerald-500/10 border-emerald-500/20',
-    },
-    {
-      title: 'Defect Units',
-      value: stats.defect_units.toLocaleString(),
-      unit: 'units',
-      sub: `${stats.scrap_rate_pct}% Scrap Rate`,
-      icon: AlertTriangle,
-      color: stats.scrap_rate_pct > 3.0 ? 'text-amber-400' : 'text-slate-400',
-      bg: stats.scrap_rate_pct > 3.0 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-slate-800/40 border-slate-700/30',
-    },
-    {
-      title: 'Energy Used',
+      title: 'Total Energy',
       value: Math.round(stats.total_energy_kwh).toLocaleString(),
       unit: 'kWh',
-      sub: 'Total Grid Draw',
+      sub: 'Grid Consumption',
       icon: Zap,
-      color: 'text-amber-400',
-      bg: 'bg-amber-500/10 border-amber-500/20',
+      accent: 'border-l-amber-500 text-amber-600',
     },
     {
       title: 'Energy / Unit',
       value: Number(stats.energy_per_unit_kwh).toFixed(3),
       unit: 'kWh/unit',
-      sub: 'Specific Consumption',
+      sub: 'Specific Energy Draw',
       icon: Gauge,
-      color: 'text-cyan-400',
-      bg: 'bg-cyan-500/10 border-cyan-500/20',
+      accent: 'border-l-cyan-500 text-cyan-600',
     },
     {
-      title: 'Logged Shifts',
+      title: 'Avg Line Speed',
+      value: stats.avg_line_speed ? Number(stats.avg_line_speed).toFixed(1) : '0.0',
+      unit: 'u/hr',
+      sub: 'Mean Velocity',
+      icon: GaugeCircle,
+      accent: 'border-l-indigo-500 text-indigo-600',
+    },
+    {
+      title: 'First-Pass Yield',
+      value: `${yieldRate}%`,
+      unit: 'yield',
+      sub: `${stats.defect_units.toLocaleString()} defect units`,
+      icon: CheckCircle2,
+      accent: 'border-l-emerald-500 text-emerald-600',
+    },
+    {
+      title: 'Shifts Audited',
       value: stats.total_records.toLocaleString(),
-      unit: 'records',
-      sub: 'PostgreSQL Audited',
+      unit: 'shifts',
+      sub: 'PostgreSQL Relational',
       icon: Layers,
-      color: 'text-purple-400',
-      bg: 'bg-purple-500/10 border-purple-500/20',
+      accent: 'border-l-purple-500 text-purple-600',
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
       {cards.map((c, i) => {
         const Icon = c.icon;
         return (
           <div
             key={i}
-            className={`p-4 rounded-xl border backdrop-blur-sm transition-all hover:translate-y-[-2px] ${c.bg}`}
+            className={`bg-white p-3.5 rounded-lg border border-slate-200 border-l-4 ${c.accent} shadow-sm transition-all hover:shadow-md`}
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{c.title}</span>
-              <Icon className={`w-4 h-4 ${c.color}`} />
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                {c.title}
+              </span>
+              <Icon className="w-4 h-4 opacity-75" />
             </div>
-            <div className="flex items-baseline space-x-1.5">
-              <span className="text-xl sm:text-2xl font-bold text-white tracking-tight">{c.value}</span>
-              <span className="text-xs text-slate-400">{c.unit}</span>
+            <div className="flex items-baseline space-x-1">
+              <span className="text-xl font-bold text-slate-900 tracking-tight font-mono">
+                {c.value}
+              </span>
+              <span className="text-xs text-slate-500 font-medium">{c.unit}</span>
             </div>
-            <p className="mt-1.5 text-xs text-slate-400 truncate">{c.sub}</p>
+            <p className="mt-1 text-[11px] text-slate-500 truncate">{c.sub}</p>
           </div>
         );
       })}

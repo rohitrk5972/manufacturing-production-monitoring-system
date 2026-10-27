@@ -5,8 +5,9 @@ export const productionRecordBaseSchema = z.object({
   production_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Production date must be in YYYY-MM-DD format' }),
   shift_id: z.coerce.number().int().positive({ message: 'Shift ID must be a positive integer' }),
   product_id: z.coerce.number().int().positive({ message: 'Product ID must be a positive integer' }),
-  units_produced: z.coerce.number().int().min(0, { message: 'Units produced cannot be negative' }),
-  defect_units: z.coerce.number().int().min(0, { message: 'Defect units cannot be negative' }),
+  line_speed: z.coerce.number().min(0, { message: 'Line speed cannot be negative' }).default(0),
+  units_produced: z.coerce.number().int({ message: 'Production quantity must be a whole number' }).min(0, { message: 'Production quantity cannot be negative' }),
+  defect_units: z.coerce.number().int().min(0, { message: 'Defect units cannot be negative' }).default(0),
   energy_consumption_kwh: z.coerce.number().min(0, { message: 'Energy consumption cannot be negative' }),
   operator_name: z.string().trim().max(100).optional().nullable(),
   notes: z.string().trim().max(1000).optional().nullable(),
@@ -40,8 +41,8 @@ export const productionFilterSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
-  sortBy: z.enum(['production_date', 'units_produced', 'defect_units', 'energy_consumption_kwh', 'created_at']).default('production_date'),
+  limit: z.coerce.number().int().positive().max(100).default(15),
+  sortBy: z.enum(['production_date', 'units_produced', 'defect_units', 'energy_consumption_kwh', 'line_speed', 'created_at']).default('production_date'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 
@@ -51,4 +52,5 @@ export const analyticsFilterSchema = z.object({
   product_id: z.coerce.number().int().positive().optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
 });

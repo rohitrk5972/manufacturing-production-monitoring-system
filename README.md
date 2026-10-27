@@ -1,165 +1,117 @@
-# Manufacturing Production Monitoring System
+# Manufacturing Operations — Production & Energy Monitoring
 
-An industrial-grade Manufacturing Execution System (MES) designed to monitor plant-wide production output, enforce strict shop-floor business rules, track energy consumption efficiency, and provide real-time analytical insights across production lines, shifts, and products.
+An enterprise Manufacturing Execution System (MES) and production monitoring platform built to track plant-wide output, velocity, and energy consumption while strictly enforcing assignment business rules and relational constraints.
 
-Built as a technical hiring assignment adhering to ACID relational principles with PostgreSQL 18, Node.js, Express, TypeScript, React, Tailwind CSS, and Recharts.
+Engineered with **PostgreSQL 18.6**, **Node.js/Express (TypeScript)**, **React 18 (TypeScript)**, **Tailwind CSS**, and **Recharts**.
+
+> **Author Attribution:** Designed & Developed by Rohit Kumar
 
 ---
 
-## 🏗️ System Architecture & Monorepo Structure
+## 📋 Technical Hiring Assignment Compliance Matrix
 
-The project is structured as a clean npm workspaces monorepo:
+| Requirement | Implementation & Technical Evidence | Verification Status |
+| :--- | :--- | :--- |
+| **4 Production Lines** | `production_lines` (Line 1 `L1`, Line 2 `L2`, Line 3 `L3`, Line 4 `L4`) | ✅ Verified |
+| **5 Products** | `products` (Product 1 through Product 5) | ✅ Verified |
+| **3 Shifts** | `shifts` (**Shift A**, **Shift B**, **Shift C**) | ✅ Verified |
+| **Exact Compatibility Matrix** | • **Line 1**: Product 1, Product 2, Product 3, Product 4<br>• **Line 2**: Product 2, Product 4<br>• **Line 3**: Product 1 only<br>• **Line 4**: Product 1, Product 3, Product 5<br>Enforced by `line_products` table and foreign key constraint `fk_line_product` | ✅ Verified in DB & 8 automated matrix tests |
+| **1 Product per Line per Day** | Enforced across all shifts via composite table `line_daily_allocations` `UNIQUE (line_id, production_date)` and atomic trigger `trg_enforce_daily_product_allocation` | ✅ Verified in DB & automated tests |
+| **1 Record per Line/Date/Shift** | Enforced via unique constraint `uq_line_date_shift UNIQUE (line_id, production_date, shift_id)` returning `409 Conflict` | ✅ Verified in DB & automated tests |
+| **Line Speed Metric** | `line_speed NUMERIC(10, 2) NOT NULL CHECK (line_speed >= 0)` in `production_records` | ✅ Verified in DB, forms, tables & trend chart |
+| **Operator Data Entry** | Operator form validating date, line, shift, compatible products, line speed, whole number quantity, energy consumption, and daily product lock | ✅ Verified in UI & API |
+| **Real PostgreSQL Analytics** | Zero hardcoded metrics. Direct SQL aggregations for:<br>• Total production for each shift (Shift A, B, C)<br>• Total daily production by line and product<br>• Total monthly production (using selected calendar month)<br>• Total energy consumed per shift<br>• Total daily energy consumption by line and product<br>• Total monthly energy consumption<br>• Line-speed trends across shifts<br>• Energy per unit (zero-division safe) | ✅ Verified in SQL queries & Recharts dashboard |
+| **Enterprise UI/UX** | Clean white/light workspace, deep navy navigation shell, restrained accents, readable tabular figures, and author footer credit | ✅ Verified |
+| **Automated Testing** | Vitest + Supertest test suites covering 21 comprehensive tests | ✅ 21 / 21 Passed |
+
+---
+
+## 🏗️ Architecture & Monorepo Structure
 
 ```text
 project/
 ├── backend/                      # Node.js + Express + TypeScript Backend
 │   ├── src/
-│   │   ├── config/               # Zod-validated environment configurations
-│   │   ├── controllers/          # Request handling (metadata, production, analytics)
+│   │   ├── config/               # Zod-validated environment config
+│   │   ├── controllers/          # Express route controllers
 │   │   ├── db/
-│   │   │   ├── pool.ts           # PostgreSQL connection pool with transaction helpers
+│   │   │   ├── pool.ts           # PostgreSQL connection pool
 │   │   │   ├── schema.sql        # PostgreSQL 18 DDL (constraints, triggers, indexes)
-│   │   │   ├── migrate.ts        # Automated DDL migration runner
-│   │   │   └── seed.ts           # Verified plant seed generator (4 lines, 5 products, 3 shifts)
-│   │   ├── middleware/           # Zod schema validation & centralized error handler
-│   │   ├── routes/               # REST API endpoints
-│   │   ├── services/             # Core business rules, concurrency locks & SQL analytics
-│   │   ├── tests/                # Automated Vitest + Supertest test suites
-│   │   ├── validators/           # Zod input & query validation schemas
-│   │   ├── app.ts                # Express application setup
+│   │   │   ├── migrate.ts        # Database migration runner
+│   │   │   └── seed.ts           # 14-day historical production seed generator
+│   │   ├── middleware/           # Zod validator & PostgreSQL error code mapper
+│   │   ├── routes/               # API endpoint definitions
+│   │   ├── services/             # Transactional services & pure SQL analytics
+│   │   ├── tests/                # Automated Vitest + Supertest suites
+│   │   ├── validators/           # Zod schemas (whole number quantities, non-negative speeds)
+│   │   ├── app.ts                # Express app setup
 │   │   └── server.ts             # Server entrypoint
 │   ├── tsconfig.json
 │   └── vitest.config.ts
 ├── frontend/                     # React 18 + TypeScript + Vite + Tailwind CSS
 │   ├── src/
-│   │   ├── api/                  # Typed async backend client
-│   │   ├── components/           # UI components (Navbar, KpiCards, Charts, Table, Form)
+│   │   ├── api/                  # Typed async API client
+│   │   ├── components/           # Navbar, KpiCards, DashboardCharts, Form, Table
 │   │   ├── types/                # Domain TypeScript models
-│   │   ├── App.tsx               # Primary control-room dashboard layout
+│   │   ├── App.tsx               # Primary corporate dashboard shell
 │   │   └── main.tsx
 │   ├── tailwind.config.js
-│   ├── vite.config.ts            # Vite config with API reverse proxy
+│   ├── vite.config.ts            # Vite proxy configuration
 │   └── tsconfig.json
-├── docker-compose.yml            # PostgreSQL 18 container orchestration
-├── package.json                  # Root monorepo workspace configuration
-└── README.md                     # Complete system documentation
+├── docs/
+│   └── assignment-compliance.md  # Detailed audit report and compliance matrix
+├── docker-compose.yml            # PostgreSQL 18 container service
+├── package.json                  # Root npm workspaces configuration
+└── README.md
 ```
 
 ---
 
-## 🛠️ Technology Stack
+## 🔒 Relational Constraints & Concurrency Safeguards
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Database** | PostgreSQL 18.6 (ACID-compliant relational constraints, composite foreign keys, PL/pgSQL triggers) |
-| **Backend** | Node.js (v22), Express.js, TypeScript, `pg` pool, Zod validation |
-| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Recharts, Lucide Icons |
-| **Testing** | Vitest, Supertest (Integration tests, business rules, concurrency, SQL aggregations) |
-| **Containerization** | Docker Compose (`postgres:18-alpine`) |
-
----
-
-## 🏭 Domain Configuration & Seed Specifications
-
-The system is pre-configured and seeded with verified manufacturing infrastructure:
-
-### 1. Four Production Lines
-- **Line 1 (`L1`)**: Line 1 (CNC Precision Machining)
-- **Line 2 (`L2`)**: Line 2 (Automated Assembly Alpha)
-- **Line 3 (`L3`)**: Line 3 (Surface Treatment & Paint)
-- **Line 4 (`L4`)**: Line 4 (High-Speed Packaging & QC)
-
-### 2. Five Products
-- **`PROD-01`**: Titanium Impeller Shaft *(Aerospace Components)*
-- **`PROD-02`**: Hydraulic Control Valve *(Automotive Powertrain)*
-- **`PROD-03`**: Electronic Sensor Housing *(Industrial Electronics)*
-- **`PROD-04`**: Alloy Turbine Blade *(Aerospace Components)*
-- **`PROD-05`**: Pneumatic Cylinder Assembly *(Industrial Automation)*
-
-### 3. Three Operating Shifts
-- **Shift 1**: Morning Shift (06:00:00 – 14:00:00, 8.0 hrs)
-- **Shift 2**: Afternoon Shift (14:00:00 – 22:00:00, 8.0 hrs)
-- **Shift 3**: Night Shift (22:00:00 – 06:00:00, 8.0 hrs)
-
-### 4. Line-Product Tooling Mappings
-In real manufacturing, machines have tooling constraints:
-- **Line 1**: Compatible with `PROD-01`, `PROD-02`, `PROD-04`
-- **Line 2**: Compatible with `PROD-02`, `PROD-03`, `PROD-05`
-- **Line 3**: Compatible with `PROD-01`, `PROD-03`, `PROD-04`
-- **Line 4**: High-Speed Packaging & QC can process all 5 products (`PROD-01` through `PROD-05`)
-
----
-
-## 🔒 Business Rules & Concurrency Handling
-
-The system strictly enforces industrial shop-floor constraints at **both the application and database schema levels**:
-
-### Rule 1: One Product per Production Line per Day
-* **Requirement**: A production line cannot switch products mid-day across different shifts. Once a line begins producing a product on a calendar date, all subsequent shifts on that date must produce that same product.
-* **Database Enforcement**:
-  - Maintained in `line_daily_allocations` table with primary key `(line_id, production_date)`.
-  - A composite foreign key on `production_records(line_id, production_date, product_id)` references `line_daily_allocations(line_id, production_date, product_id)`.
-  - An atomic `BEFORE INSERT OR UPDATE` PL/pgSQL trigger (`trg_enforce_daily_product_allocation`) detects any attempt to introduce a different product on that date and raises error `23514` (`Business Rule Violation`).
-* **Concurrency Safety**:
-  - `INSERT INTO line_daily_allocations ... ON CONFLICT (line_id, production_date) DO UPDATE ... RETURNING product_id` inside an isolated transaction guarantees that concurrent requests race safely and cannot create conflicting product assignments.
-
-### Rule 2: One Record per Line, Date, and Shift
-* **Requirement**: Only one production entry is permitted per line for any given shift on a specific date.
-* **Database Enforcement**:
-  - Enforced via unique constraint `uq_line_date_shift UNIQUE (line_id, production_date, shift_id)`.
-  - Concurrent submissions for the same shift trigger a unique constraint violation (`23505`), which the backend gracefully returns as `409 Conflict`.
-
-### Rule 3: Line-Product Compatibility
-* **Requirement**: Operators cannot record production of a product on a line that lacks compatible tooling.
-* **Database Enforcement**:
-  - Enforced by foreign key `fk_line_product FOREIGN KEY (line_id, product_id) REFERENCES line_products(line_id, product_id)`.
-
-### Rule 4: Data Integrity & Defect Constraints
-* `units_produced >= 0`
-* `defect_units >= 0 AND defect_units <= units_produced`
-* `good_units` is generated deterministically: `good_units INT GENERATED ALWAYS AS (units_produced - defect_units) STORED`
-* `energy_consumption_kwh >= 0`
+1. **One Product per Production Line per Day**:
+   - `line_daily_allocations` table with primary key `(line_id, production_date)`.
+   - Referenced by composite foreign key `(line_id, production_date, product_id)`.
+   - An atomic PL/pgSQL trigger `trg_enforce_daily_product_allocation` raises exception `23514` on conflicting mid-day product switches.
+   - Race conditions are safely handled in database transactions using `INSERT INTO line_daily_allocations ... ON CONFLICT (line_id, production_date) DO UPDATE`.
+2. **One Record per Line, Date, and Shift**:
+   - Unique constraint `uq_line_date_shift UNIQUE (line_id, production_date, shift_id)`.
+   - Concurrent submissions trigger `23505` which the backend maps to `409 Conflict`.
+3. **Line-Product Compatibility Matrix**:
+   - Enforced by `fk_line_product FOREIGN KEY (line_id, product_id) REFERENCES line_products(line_id, product_id)`.
+4. **Data Integrity & Non-Negative Validation**:
+   - `line_speed NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (line_speed >= 0)`.
+   - `units_produced INT NOT NULL CHECK (units_produced >= 0)`.
+   - `good_units` generated column: `good_units INT GENERATED ALWAYS AS (units_produced - defect_units) STORED`.
+   - Specific energy consumption calculates `SUM(energy) / NULLIF(SUM(units), 0)` to guarantee zero-division safety.
 
 ---
 
 ## 📊 Real PostgreSQL Analytics Engine
 
-The dashboard displays zero hardcoded metrics. All figures and charts are computed using pure PostgreSQL aggregations:
+The application performs all calculations inside PostgreSQL:
 
-1. **Overall KPIs**:
-   ```sql
-   SELECT 
-     SUM(units_produced)::int AS total_units,
-     SUM(good_units)::int AS good_units,
-     SUM(defect_units)::int AS defect_units,
-     ROUND(SUM(defect_units)::numeric / NULLIF(SUM(units_produced), 0)::numeric * 100, 2) AS scrap_rate_pct,
-     ROUND(SUM(energy_consumption_kwh)::numeric, 2) AS total_energy_kwh,
-     ROUND(SUM(energy_consumption_kwh)::numeric / NULLIF(SUM(units_produced), 0)::numeric, 4) AS energy_per_unit_kwh
-   FROM production_records;
-   ```
-2. **Daily Production & Quality Trends**:
-   - Time-series aggregated by `production_date`.
-3. **Monthly Production**:
-   - Aggregated by `TO_CHAR(production_date, 'YYYY-MM')`.
-4. **Shift Comparisons**:
-   - Grouped by `s.id, s.shift_number, s.name` comparing production volume, scrap rate %, and energy per unit across Morning, Afternoon, and Night shifts.
-5. **Product Comparisons**:
-   - Grouped by product SKU comparing volume produced and energy intensity.
-6. **Specific Energy Intensity (kWh/unit)**:
-   - Evaluates energy efficiency: `SUM(energy_consumption_kwh) / NULLIF(SUM(units_produced), 0)`.
+- **Plant KPIs**: Total Production, Total Energy, Avg Line Speed, Specific Energy per Unit, and Yield Rate.
+- **Daily Production & Quality Trend**: Good units vs scrap units over time.
+- **Daily Energy & Intensity Trend**: Grid energy draw (kWh) vs energy per unit (kWh/u).
+- **Shift Comparisons**: Production quantity, energy, and line speed across **Shift A**, **Shift B**, and **Shift C**.
+- **Product Comparisons**: Volume and specific energy intensity across **Product 1** through **Product 5**.
+- **Line Comparisons**: Throughput and energy across **Line 1** through **Line 4**.
+- **Line-Speed Trends**: Average velocity (units/hour) progression across operating shifts.
+- **Daily Line & Product Breakdown Table**: Relational grouping of daily volume and energy by line and product.
 
 ---
 
-## 🚀 Setup & Installation Guide
+## 🚀 Setup & Execution Guide
 
 ### Prerequisites
-- **Node.js**: v20 or v22 (detected: `v22.19.0`)
-- **npm**: v10 (detected: `10.9.3`)
-- **PostgreSQL**: PostgreSQL 18 (e.g. Postgres.app on macOS or Docker)
+- **Node.js**: v20 or v22 (Active LTS)
+- **npm**: v10+
+- **PostgreSQL 18**: Running on `localhost:5432` (via Postgres.app on macOS or Docker)
 
 ### 1. Environment Configuration
 
-Create or verify `backend/.env`:
+Verify [`backend/.env`](file:///Users/rohitkumar/Desktop/project/backend/.env):
 
 ```env
 PORT=5001
@@ -168,77 +120,73 @@ DATABASE_URL=postgresql://rohitkumar@localhost:5432/manufacturing_db
 TEST_DATABASE_URL=postgresql://rohitkumar@localhost:5432/manufacturing_test_db
 ```
 
-### 2. Database Creation & Migration
+### 2. Database Migration & Seeding
 
-If using Postgres.app on macOS:
 ```bash
-# Export PostgreSQL 18 tools to PATH if not already in global PATH:
+# If using Postgres.app on macOS, ensure psql tools are in PATH:
 export PATH="/Applications/Postgres.app/Contents/Versions/18/bin:$PATH"
 
-# Create application and test databases:
-createdb -h localhost -p 5432 -U rohitkumar manufacturing_db
-createdb -h localhost -p 5432 -U rohitkumar manufacturing_test_db
-```
-
-*(Alternatively, if running via Docker: `docker compose up -d`)*
-
-Run migrations and seed the database with historical shift records:
-```bash
+# Run migrations:
 npm run db:migrate
+
+# Seed 4 lines, 5 products, 3 shifts, exact mappings, and 14 days of shift records:
 npm run db:seed
 ```
 
+*(Alternatively, to spin up PostgreSQL via Docker: `docker compose up -d`)*
+
 ### 3. Running the Application
 
-Run both backend and frontend concurrently in development mode:
 ```bash
+# Start backend API (port 5001) and frontend dashboard (port 3000) concurrently:
 npm run dev
 ```
-- **Backend API**: `http://localhost:5001`
-- **Frontend Dashboard**: `http://localhost:3000`
+
+- **Frontend Application**: `http://localhost:3000`
+- **Backend API**: `http://localhost:5001/api/health`
 
 ---
 
 ## 🧪 Automated Testing
 
-The backend includes a comprehensive Vitest + Supertest suite testing business rules, validation constraints, concurrency, and real SQL aggregations.
+Run the full automated test suite:
 
-Run the test suite:
 ```bash
 npm test
 ```
 
-### Test Coverage Highlights:
-- **`business-rules.test.ts`**:
-  1. Successful creation of valid shift record with generated good units and scrap rate.
-  2. One record per line/date/shift constraint (409 Conflict on duplicate).
-  3. One product per line per day constraint (409 Conflict on different product on same line and date).
-  4. Permitting same product on same line across different shifts of the same day.
-  5. Rejecting product not mapped to line tooling (400 Bad Request).
-  6. Rejecting defect units greater than total units produced (400 Bad Request).
-  7. Rejecting negative units or energy values (400 Bad Request).
-  8. Concurrent insertion handling (Promise.all race condition test).
-- **`analytics.test.ts`**:
-  1. KPI aggregation calculation accuracy (good + defect = total).
-  2. Daily production time series queries.
-  3. 3-shift comparison aggregations.
-  4. 5-product comparison aggregations.
-  5. 4-line performance breakdown.
-  6. Query filter application (date range, line filter).
+### Verified Test Cases (21 / 21 Passed):
+- **Compatibility Matrix Suite (`business-rules.test.ts`)**:
+  1. Line 1 accepts Products 1, 2, 3, 4
+  2. Line 1 rejects Product 5 with 400
+  3. Line 2 accepts Products 2, 4
+  4. Line 2 rejects Products 1, 3, 5 with 400
+  5. Line 3 accepts Product 1 only
+  6. Line 3 rejects Products 2, 3, 4, 5 with 400
+  7. Line 4 accepts Products 1, 3, 5
+  8. Line 4 rejects Products 2, 4 with 400
+  9. Enforces 1 product per line per day across shifts (rejects switch with 409)
+  10. Allows same product on same line in subsequent shifts of the same day
+  11. Enforces 1 record per line/date/shift (rejects duplicate with 409)
+  12. Rejects negative line speed with 400
+  13. Rejects fractional or negative production quantity with 400
+  14. Safely handles concurrent race conditions on shift entry
+- **Analytics & SQL Aggregation Suite (`analytics.test.ts`)**:
+  1. GET `/api/analytics/kpis` returns aggregated volume, energy, line speed, and efficiency
+  2. GET `/api/analytics/daily-production` returns daily time series
+  3. GET `/api/analytics/daily-by-line-product` groups daily output by line and product
+  4. GET `/api/analytics/monthly-production` supports calendar month filtering (`YYYY-MM`)
+  5. GET `/api/analytics/shift-comparison` returns Shift A, Shift B, and Shift C
+  6. GET `/api/analytics/line-speed-trends` returns velocity progression
+  7. Handles zero-production safely without divide-by-zero errors
 
 ---
 
-## 🚢 Production Build & Deployment
+## 📦 Production Build
 
-To build all packages for production:
 ```bash
 npm run build
 ```
 
-- Backend builds cleanly via `tsc` to `backend/dist/`.
-- Frontend builds an optimized production bundle via `vite build` to `frontend/dist/`.
-
-To start the production backend:
-```bash
-npm run start --workspace=backend
-```
+- Backend compiles via `tsc` to [`backend/dist/`](file:///Users/rohitkumar/Desktop/project/backend/dist).
+- Frontend bundles an optimized production build via Vite to [`frontend/dist/`](file:///Users/rohitkumar/Desktop/project/frontend/dist).

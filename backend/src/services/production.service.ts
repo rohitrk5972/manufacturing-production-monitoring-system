@@ -6,8 +6,9 @@ export interface CreateRecordInput {
   production_date: string;
   shift_id: number;
   product_id: number;
+  line_speed?: number;
   units_produced: number;
-  defect_units: number;
+  defect_units?: number;
   energy_consumption_kwh: number;
   operator_name?: string | null;
   notes?: string | null;
@@ -18,6 +19,7 @@ export interface UpdateRecordInput {
   production_date?: string;
   shift_id?: number;
   product_id?: number;
+  line_speed?: number;
   units_produced?: number;
   defect_units?: number;
   energy_consumption_kwh?: number;
@@ -40,7 +42,7 @@ export interface ProductionFilter {
 export class ProductionService {
   async listRecords(filter: ProductionFilter) {
     const page = filter.page || 1;
-    const limit = filter.limit || 20;
+    const limit = filter.limit || 15;
     const offset = (page - 1) * limit;
     const sortBy = filter.sortBy || 'production_date';
     const sortOrder = filter.sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
@@ -86,18 +88,20 @@ export class ProductionService {
         pl.name AS line_name,
         pr.production_date::text,
         pr.shift_id,
+        s.code AS shift_code,
         s.shift_number,
         s.name AS shift_name,
         pr.product_id,
         p.sku AS product_sku,
         p.name AS product_name,
         p.category AS product_category,
+        pr.line_speed::float AS line_speed,
         pr.units_produced,
         pr.defect_units,
         pr.good_units,
-        pr.energy_consumption_kwh,
-        ROUND((pr.defect_units::numeric / NULLIF(pr.units_produced, 0)::numeric) * 100, 2) AS scrap_rate_pct,
-        ROUND((pr.energy_consumption_kwh::numeric / NULLIF(pr.units_produced, 0)::numeric), 4) AS energy_per_unit_kwh,
+        pr.energy_consumption_kwh::float AS energy_consumption_kwh,
+        ROUND((pr.defect_units::numeric / NULLIF(pr.units_produced, 0)::numeric) * 100, 2)::float AS scrap_rate_pct,
+        ROUND((pr.energy_consumption_kwh::numeric / NULLIF(pr.units_produced, 0)::numeric), 4)::float AS energy_per_unit_kwh,
         pr.operator_name,
         pr.notes,
         pr.created_at,
@@ -134,18 +138,20 @@ export class ProductionService {
         pl.name AS line_name,
         pr.production_date::text,
         pr.shift_id,
+        s.code AS shift_code,
         s.shift_number,
         s.name AS shift_name,
         pr.product_id,
         p.sku AS product_sku,
         p.name AS product_name,
         p.category AS product_category,
+        pr.line_speed::float AS line_speed,
         pr.units_produced,
         pr.defect_units,
         pr.good_units,
-        pr.energy_consumption_kwh,
-        ROUND((pr.defect_units::numeric / NULLIF(pr.units_produced, 0)::numeric) * 100, 2) AS scrap_rate_pct,
-        ROUND((pr.energy_consumption_kwh::numeric / NULLIF(pr.units_produced, 0)::numeric), 4) AS energy_per_unit_kwh,
+        pr.energy_consumption_kwh::float AS energy_consumption_kwh,
+        ROUND((pr.defect_units::numeric / NULLIF(pr.units_produced, 0)::numeric) * 100, 2)::float AS scrap_rate_pct,
+        ROUND((pr.energy_consumption_kwh::numeric / NULLIF(pr.units_produced, 0)::numeric), 4)::float AS energy_per_unit_kwh,
         pr.operator_name,
         pr.notes,
         pr.created_at,
@@ -164,7 +170,8 @@ export class ProductionService {
   }
 
   async createRecord(input: CreateRecordInput) {
-    if (input.defect_units > input.units_produced) {
+    const defectUnits = input.defect_units ?? 0;
+    if (defectUnits > input.units_produced) {
       throw new AppError('Defect units cannot exceed total units produced', 400);
     }
 
@@ -182,7 +189,6 @@ export class ProductionService {
       }
 
       // 2. Concurrency-safe Daily Product Allocation Handling
-      // Atomically insert the allocation or retrieve the active allocation
       const allocResult = await client.query(`
         INSERT INTO line_daily_allocations (line_id, production_date, product_id)
         VALUES ($1, $2, $3)
@@ -204,7 +210,7 @@ export class ProductionService {
         );
       }
 
-      // 3. Check for existing record for line, date, shift (prevent duplicate)
+      // 3. Check for existing record for line, date, shift
       const existingRecordCheck = await client.query(
         'SELECT id FROM production_records WHERE line_id = $1 AND production_date = $2 AND shift_id = $3',
         [input.line_id, input.production_date, input.shift_id]
@@ -217,20 +223,22 @@ export class ProductionService {
       }
 
       // 4. Insert Production Record
+      const lineSpeed = input.line_speed ?? 0;
       const insertResult = await client.query(`
         INSERT INTO production_records (
           line_id, production_date, shift_id, product_id,
-          units_produced, defect_units, energy_consumption_kwh,
+          line_speed, units_produced, defect_units, energy_consumption_kwh,
           operator_name, notes
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING id;
       `, [
         input.line_id,
         input.production_date,
         input.shift_id,
         input.product_id,
+        lineSpeed,
         input.units_produced,
-        input.defect_units,
+        defectUnits,
         input.energy_consumption_kwh,
         input.operator_name || null,
         input.notes || null,
@@ -259,6 +267,7 @@ export class ProductionService {
       const prodDate = input.production_date ?? existing.production_date;
       const shiftId = input.shift_id ?? existing.shift_id;
       const productId = input.product_id ?? existing.product_id;
+      const lineSpeed = input.line_speed ?? existing.line_speed;
       const units = input.units_produced ?? existing.units_produced;
       const defects = input.defect_units ?? existing.defect_units;
       const energy = input.energy_consumption_kwh ?? existing.energy_consumption_kwh;
@@ -278,7 +287,7 @@ export class ProductionService {
         throw new AppError('Selected product is not permitted for this production line.', 400);
       }
 
-      // Check daily allocation if product changed or date/line changed
+      // Check daily allocation
       const otherRecordsOnDay = await client.query(
         'SELECT DISTINCT product_id FROM production_records WHERE line_id = $1 AND production_date = $2 AND id <> $3',
         [lineId, prodDate, id]
@@ -291,7 +300,7 @@ export class ProductionService {
         );
       }
 
-      // Check shift uniqueness if date, line, or shift changed
+      // Check shift uniqueness
       const duplicateShift = await client.query(
         'SELECT 1 FROM production_records WHERE line_id = $1 AND production_date = $2 AND shift_id = $3 AND id <> $4',
         [lineId, prodDate, shiftId, id]
@@ -318,16 +327,17 @@ export class ProductionService {
             production_date = $2,
             shift_id = $3,
             product_id = $4,
-            units_produced = $5,
-            defect_units = $6,
-            energy_consumption_kwh = $7,
-            operator_name = $8,
-            notes = $9,
+            line_speed = $5,
+            units_produced = $6,
+            defect_units = $7,
+            energy_consumption_kwh = $8,
+            operator_name = $9,
+            notes = $10,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $10;
+        WHERE id = $11;
       `, [
         lineId, prodDate, shiftId, productId,
-        units, defects, energy, operatorName, notes, id
+        lineSpeed, units, defects, energy, operatorName, notes, id
       ]);
 
       await client.query('COMMIT');
@@ -349,7 +359,6 @@ export class ProductionService {
 
       await client.query('DELETE FROM production_records WHERE id = $1', [id]);
 
-      // Check if any records remain for that line and date; if none, free up daily allocation
       const remaining = await client.query(
         'SELECT 1 FROM production_records WHERE line_id = $1 AND production_date = $2',
         [existing.line_id, existing.production_date]

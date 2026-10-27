@@ -18,6 +18,7 @@ export interface Product {
 
 export interface Shift {
   id: number;
+  code: string;
   shift_number: number;
   name: string;
   start_time: string;
@@ -43,12 +44,14 @@ export interface ProductionRecord {
   line_name: string;
   production_date: string;
   shift_id: number;
+  shift_code: string;
   shift_number: number;
   shift_name: string;
   product_id: number;
   product_sku: string;
   product_name: string;
   product_category: string;
+  line_speed: number;
   units_produced: number;
   defect_units: number;
   good_units: number;
@@ -68,6 +71,7 @@ export interface KPIStats {
   scrap_rate_pct: number;
   total_energy_kwh: number;
   energy_per_unit_kwh: number;
+  avg_line_speed: number;
   total_records: number;
 }
 
@@ -76,10 +80,24 @@ export interface DailyProductionPoint {
   total_units: number;
   good_units: number;
   defect_units: number;
-  scrap_rate_pct: number;
   total_energy_kwh: number;
   energy_per_unit_kwh: number;
+  avg_line_speed: number;
+  scrap_rate_pct: number;
   shifts_recorded: number;
+}
+
+export interface DailyByLineProductPoint {
+  production_date: string;
+  line_code: string;
+  line_name: string;
+  product_sku: string;
+  product_name: string;
+  total_units: number;
+  total_energy_kwh: number;
+  energy_per_unit_kwh: number;
+  avg_line_speed: number;
+  shifts_count: number;
 }
 
 export interface MonthlyProductionPoint {
@@ -90,11 +108,13 @@ export interface MonthlyProductionPoint {
   scrap_rate_pct: number;
   total_energy_kwh: number;
   energy_per_unit_kwh: number;
+  avg_line_speed: number;
   total_records: number;
 }
 
 export interface ShiftComparisonPoint {
   shift_id: number;
+  shift_code: string;
   shift_number: number;
   shift_name: string;
   total_units: number;
@@ -103,6 +123,7 @@ export interface ShiftComparisonPoint {
   scrap_rate_pct: number;
   total_energy_kwh: number;
   energy_per_unit_kwh: number;
+  avg_line_speed: number;
   records_count: number;
 }
 
@@ -114,9 +135,9 @@ export interface ProductComparisonPoint {
   total_units: number;
   good_units: number;
   defect_units: number;
-  scrap_rate_pct: number;
   total_energy_kwh: number;
   energy_per_unit_kwh: number;
+  avg_line_speed: number;
   records_count: number;
 }
 
@@ -127,10 +148,18 @@ export interface LineComparisonPoint {
   total_units: number;
   good_units: number;
   defect_units: number;
-  scrap_rate_pct: number;
   total_energy_kwh: number;
   energy_per_unit_kwh: number;
+  avg_line_speed: number;
   records_count: number;
+}
+
+export interface LineSpeedTrendPoint {
+  production_date: string;
+  shift_code: string;
+  shift_name: string;
+  avg_line_speed: number;
+  total_units: number;
 }
 
 export interface ActiveDailyAllocation {
