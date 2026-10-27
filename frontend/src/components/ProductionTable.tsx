@@ -11,7 +11,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  AlertTriangle,
+  Download,
 } from 'lucide-react';
+import { api } from '../api/client';
 
 interface ProductionTableProps {
   records: ProductionRecord[];
@@ -49,7 +52,9 @@ export const ProductionTable: React.FC<ProductionTableProps> = ({
   loading,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [recordToDelete, setRecordToDelete] = useState<ProductionRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [exporting, setExporting] = useState<boolean>(false);
 
   const displayedRecords = records.filter((r) => {
     if (!searchTerm.trim()) return true;
@@ -64,14 +69,27 @@ export const ProductionTable: React.FC<ProductionTableProps> = ({
     );
   });
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this shift record?')) {
-      setDeletingId(id);
-      try {
-        await onDeleteRecord(id);
-      } finally {
-        setDeletingId(null);
-      }
+  const handleConfirmDelete = async () => {
+    if (!recordToDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDeleteRecord(recordToDelete.id);
+      setRecordToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      await api.downloadRecordsCsv({
+        ...filters,
+      });
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -93,16 +111,29 @@ export const ProductionTable: React.FC<ProductionTableProps> = ({
             </p>
           </div>
 
-          {/* Quick Search */}
-          <div className="relative w-full sm:w-60">
-            <input
-              type="text"
-              placeholder="Filter by SKU, operator, line..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
-            />
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2 pointer-events-none" />
+          <div className="flex items-center space-x-2">
+            {/* Quick Search */}
+            <div className="relative w-full sm:w-60">
+              <input
+                type="text"
+                placeholder="Filter by SKU, operator, line..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2 pointer-events-none" />
+            </div>
+
+            {/* Export CSV Button */}
+            <button
+              onClick={handleExportCsv}
+              disabled={exporting}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded bg-white hover:bg-slate-50 border border-slate-300 text-xs font-semibold text-slate-700 shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 disabled:opacity-50 whitespace-nowrap"
+              title="Export filtered production records to CSV"
+            >
+              <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce text-sky-600' : 'text-slate-500'}`} />
+              <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+            </button>
           </div>
         </div>
 
@@ -244,10 +275,10 @@ export const ProductionTable: React.FC<ProductionTableProps> = ({
                   </td>
                   <td className="py-2.5 px-3 text-center">
                     <button
-                      onClick={() => handleDelete(r.id)}
-                      disabled={deletingId === r.id}
-                      className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      title="Delete record"
+                      onClick={() => setRecordToDelete(r)}
+                      className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                      title="Delete shift record"
+                      aria-label={`Delete record for ${r.line_code} on ${r.production_date}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -270,19 +301,97 @@ export const ProductionTable: React.FC<ProductionTableProps> = ({
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage <= 1 || loading}
-            className="p-1 rounded border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="p-1 rounded border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+            aria-label="Previous page"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage >= totalPages || loading}
-            className="p-1 rounded border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="p-1 rounded border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+            aria-label="Next page"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Enterprise Delete Confirmation Modal */}
+      {recordToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+        >
+          <div className="bg-white rounded-lg border border-slate-200 shadow-xl max-w-md w-full p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h4 id="delete-dialog-title" className="text-sm font-bold text-slate-900">
+                  Confirm Shift Record Deletion
+                </h4>
+                <p className="text-xs text-slate-500 mt-1">
+                  Are you sure you want to permanently delete this production record? This will immediately recalculate all plant KPIs, yield metrics, and energy analytics in PostgreSQL.
+                </p>
+              </div>
+            </div>
+
+            {/* Record Summary Box */}
+            <div className="bg-slate-50 rounded border border-slate-200 p-3 text-xs space-y-1.5 font-mono">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-sans">Date:</span>
+                <span className="font-semibold text-slate-800">{recordToDelete.production_date}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-sans">Line & Shift:</span>
+                <span className="font-semibold text-slate-800">{recordToDelete.line_name} ({recordToDelete.shift_name})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-sans">Product:</span>
+                <span className="font-semibold text-slate-800">{recordToDelete.product_sku} — {recordToDelete.product_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-sans">Volume / Energy:</span>
+                <span className="font-semibold text-slate-800">{recordToDelete.units_produced.toLocaleString()} units / {Math.round(recordToDelete.energy_consumption_kwh)} kWh</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end space-x-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setRecordToDelete(null)}
+                disabled={isDeleting}
+                className="px-3 py-1.5 rounded border border-slate-300 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-3.5 py-1.5 rounded bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 flex items-center space-x-1.5 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Record</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

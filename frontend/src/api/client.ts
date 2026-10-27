@@ -30,10 +30,15 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const errorMsg = data.message || data.error || `HTTP ${res.status}: Failed to fetch`;
+    const errorMsg =
+      data.error?.message ||
+      data.message ||
+      (typeof data.error === 'string' ? data.error : null) ||
+      `HTTP ${res.status}: Failed to fetch`;
     const err = new Error(errorMsg);
     (err as any).status = res.status;
-    (err as any).details = data.details;
+    (err as any).code = data.error?.code;
+    (err as any).fields = data.error?.fields || data.details;
     throw err;
   }
 
@@ -41,6 +46,9 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // System Health
+  getHealth: () => request<{ status: string; service: string }>('/health'),
+
   // Metadata
   getLines: () => request<ProductionLine[]>('/metadata/lines'),
   getProducts: () => request<Product[]>('/metadata/products'),
@@ -82,6 +90,31 @@ export const api = {
     request<{ success: boolean; message: string }>(`/production-records/${id}`, {
       method: 'DELETE',
     }),
+
+  downloadRecordsCsv: async (params?: Record<string, any>) => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== '') {
+          searchParams.append(key, String(val));
+        }
+      });
+    }
+    const query = searchParams.toString();
+    const res = await fetch(`/api/production-records/export/csv${query ? `?${query}` : ''}`);
+    if (!res.ok) {
+      throw new Error('Failed to export records as CSV');
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `production_records_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
 
   // Analytics
   getKPIs: (params?: Record<string, any>) => {

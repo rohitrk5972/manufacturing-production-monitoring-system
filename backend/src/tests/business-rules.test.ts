@@ -171,7 +171,8 @@ describe('Assignment Compatibility Matrix & Business Rules', () => {
         energy_consumption_kwh: 240.0,
       });
       expect(res2.status).toBe(409);
-      expect(res2.body.error).toMatch(/Business Rule Violation|Daily Product Allocation Mismatch/i);
+      const errMsg = typeof res2.body.error === 'object' ? res2.body.error.message : res2.body.error;
+      expect(errMsg).toMatch(/Business Rule Violation|Daily Product Allocation Mismatch/i);
     });
 
     it('Allows same product on same line in subsequent shifts of the same day', async () => {
@@ -203,7 +204,8 @@ describe('Assignment Compatibility Matrix & Business Rules', () => {
         energy_consumption_kwh: 230.0,
       });
       expect(res.status).toBe(409);
-      expect(res.body.error).toMatch(/Record Already Exists|already exists/i);
+      const dupErrMsg = typeof res.body.error === 'object' ? res.body.error.message : res.body.error;
+      expect(dupErrMsg).toMatch(/Record Already Exists|already exists/i);
     });
 
     it('Rejects negative line speed with 400', async () => {

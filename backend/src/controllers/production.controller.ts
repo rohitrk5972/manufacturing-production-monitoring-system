@@ -49,6 +49,18 @@ export class ProductionController {
       next(err);
     }
   }
+
+  async exportCsv(req: Request, res: Response, next: NextFunction) {
+    try {
+      const csvData = await productionService.exportRecordsCsv(req.query as any);
+      const filename = `production_records_${new Date().toISOString().slice(0, 10)}.csv`;
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.status(200).send(csvData);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const productionController = new ProductionController();

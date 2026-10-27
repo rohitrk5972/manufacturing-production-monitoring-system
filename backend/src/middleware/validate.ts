@@ -8,12 +8,19 @@ export const validateBody = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
+        const fields = error.errors.map((err) => ({
+          field: err.path.join('.'),
+          message: err.message,
+        }));
+        const message = fields[0]?.message || 'Validation Error';
         res.status(400).json({
-          error: 'Validation Error',
-          details: error.errors.map((err) => ({
-            field: err.path.join('.'),
-            message: err.message,
-          })),
+          error: {
+            code: 'VALIDATION_ERROR',
+            message,
+            fields,
+          },
+          message,
+          details: fields,
         });
         return;
       }
@@ -29,12 +36,19 @@ export const validateQuery = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
+        const fields = error.errors.map((err) => ({
+          field: err.path.join('.'),
+          message: err.message,
+        }));
+        const message = fields[0]?.message || 'Query Validation Error';
         res.status(400).json({
-          error: 'Query Validation Error',
-          details: error.errors.map((err) => ({
-            field: err.path.join('.'),
-            message: err.message,
-          })),
+          error: {
+            code: 'QUERY_VALIDATION_ERROR',
+            message,
+            fields,
+          },
+          message,
+          details: fields,
         });
         return;
       }

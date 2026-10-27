@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, Zap, Gauge, Layers, GaugeCircle, CheckCircle2 } from 'lucide-react';
+import { Package, CheckCircle2, Zap, Gauge, GaugeCircle, Percent, Layers } from 'lucide-react';
 import { KPIStats } from '../types';
 
 interface KpiCardsProps {
@@ -10,15 +10,15 @@ interface KpiCardsProps {
 export const KpiCards: React.FC<KpiCardsProps> = ({ stats, loading }) => {
   if (loading || !stats) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 animate-pulse">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-24 bg-white rounded-lg border border-slate-200 p-4"></div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 animate-pulse">
+        {[...Array(7)].map((_, i) => (
+          <div key={i} className="h-24 bg-white rounded-lg border border-slate-200 p-3.5"></div>
         ))}
       </div>
     );
   }
 
-  const yieldRate = stats.total_units > 0 
+  const firstPassYield = stats.total_units > 0
     ? ((stats.good_units / stats.total_units) * 100).toFixed(1)
     : '100.0';
 
@@ -27,74 +27,86 @@ export const KpiCards: React.FC<KpiCardsProps> = ({ stats, loading }) => {
       title: 'Total Production',
       value: stats.total_units.toLocaleString(),
       unit: 'units',
-      sub: `${stats.good_units.toLocaleString()} good units`,
+      subtext: `${stats.good_units.toLocaleString()} good units`,
       icon: Package,
-      accent: 'border-l-sky-500 text-sky-600',
+      borderAccent: 'border-t-sky-600 text-sky-700',
+    },
+    {
+      title: 'Good Units',
+      value: stats.good_units.toLocaleString(),
+      unit: 'units',
+      subtext: `${stats.defect_units.toLocaleString()} scrap units`,
+      icon: CheckCircle2,
+      borderAccent: 'border-t-emerald-600 text-emerald-700',
     },
     {
       title: 'Total Energy',
       value: Math.round(stats.total_energy_kwh).toLocaleString(),
       unit: 'kWh',
-      sub: 'Grid Consumption',
+      subtext: 'Cumulative grid draw',
       icon: Zap,
-      accent: 'border-l-amber-500 text-amber-600',
+      borderAccent: 'border-t-amber-600 text-amber-700',
     },
     {
-      title: 'Energy / Unit',
+      title: 'Specific Energy',
       value: Number(stats.energy_per_unit_kwh).toFixed(3),
       unit: 'kWh/unit',
-      sub: 'Specific Energy Draw',
+      subtext: 'Consumption per output',
       icon: Gauge,
-      accent: 'border-l-cyan-500 text-cyan-600',
+      borderAccent: 'border-t-cyan-600 text-cyan-700',
     },
     {
       title: 'Avg Line Speed',
       value: stats.avg_line_speed ? Number(stats.avg_line_speed).toFixed(1) : '0.0',
-      unit: 'u/hr',
-      sub: 'Mean Velocity',
+      unit: 'units/hr',
+      subtext: 'Mean operational rate',
       icon: GaugeCircle,
-      accent: 'border-l-indigo-500 text-indigo-600',
+      borderAccent: 'border-t-indigo-600 text-indigo-700',
     },
     {
       title: 'First-Pass Yield',
-      value: `${yieldRate}%`,
+      value: `${firstPassYield}%`,
       unit: 'yield',
-      sub: `${stats.defect_units.toLocaleString()} defect units`,
-      icon: CheckCircle2,
-      accent: 'border-l-emerald-500 text-emerald-600',
+      subtext: `${stats.scrap_rate_pct}% scrap rate`,
+      icon: Percent,
+      borderAccent: 'border-t-teal-600 text-teal-700',
     },
     {
-      title: 'Shifts Audited',
+      title: 'Recorded Shifts',
       value: stats.total_records.toLocaleString(),
       unit: 'shifts',
-      sub: 'PostgreSQL Relational',
+      subtext: 'Verified shift logs',
       icon: Layers,
-      accent: 'border-l-purple-500 text-purple-600',
+      borderAccent: 'border-t-slate-600 text-slate-700',
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
       {cards.map((c, i) => {
         const Icon = c.icon;
         return (
           <div
             key={i}
-            className={`bg-white p-3.5 rounded-lg border border-slate-200 border-l-4 ${c.accent} shadow-sm transition-all hover:shadow-md`}
+            className={`bg-white p-3 rounded-lg border border-slate-200 border-t-2 ${c.borderAccent} shadow-sm flex flex-col justify-between`}
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-semibold text-slate-600">
                 {c.title}
               </span>
-              <Icon className="w-4 h-4 opacity-75" />
+              <Icon className="w-3.5 h-3.5 opacity-60 flex-shrink-0" />
             </div>
-            <div className="flex items-baseline space-x-1">
-              <span className="text-xl font-bold text-slate-900 tracking-tight font-mono">
-                {c.value}
-              </span>
-              <span className="text-xs text-slate-500 font-medium">{c.unit}</span>
+
+            <div className="my-1">
+              <div className="flex items-baseline space-x-1">
+                <span className="text-lg font-bold text-slate-900 tracking-tight font-mono tabular-nums">
+                  {c.value}
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium">{c.unit}</span>
+              </div>
             </div>
-            <p className="mt-1 text-[11px] text-slate-500 truncate">{c.sub}</p>
+
+            <p className="text-[10px] text-slate-500 truncate">{c.subtext}</p>
           </div>
         );
       })}

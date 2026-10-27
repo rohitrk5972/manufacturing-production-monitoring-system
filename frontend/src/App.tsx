@@ -59,23 +59,27 @@ export const App: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [dataLoading, setDataLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [isBackendConnected, setIsBackendConnected] = useState<boolean>(true);
 
   // Load Metadata once on startup
   useEffect(() => {
     async function loadMetadata() {
       try {
-        const [l, p, s, m] = await Promise.all([
+        const [l, p, s, m, health] = await Promise.all([
           api.getLines(),
           api.getProducts(),
           api.getShifts(),
           api.getLineProducts(),
+          api.getHealth().catch(() => null),
         ]);
         setLines(l);
         setProducts(p);
         setShifts(s);
         setLineMappings(m);
+        setIsBackendConnected(health?.status === 'ok');
       } catch (err) {
         console.error('Failed to load system metadata:', err);
+        setIsBackendConnected(false);
       }
     }
     loadMetadata();
@@ -108,8 +112,10 @@ export const App: React.FC = () => {
       setRecords(recRes.data);
       setTotalRecords(recRes.pagination.total);
       setTotalPages(recRes.pagination.totalPages);
+      setIsBackendConnected(true);
     } catch (err) {
       console.error('Failed to load production data:', err);
+      setIsBackendConnected(false);
     } finally {
       setDataLoading(false);
       setRefreshing(false);
@@ -138,6 +144,7 @@ export const App: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenNewRecordModal={() => setIsModalOpen(true)}
+        isBackendConnected={isBackendConnected}
       />
 
       {/* Main Content Container */}
@@ -196,6 +203,7 @@ export const App: React.FC = () => {
               lineData={lineData}
               lineSpeedTrendData={lineSpeedTrendData}
               loading={dataLoading}
+              selectedMonth={selectedMonth}
             />
 
             {/* Daily Line & Product Summary Table */}

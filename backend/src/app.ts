@@ -25,7 +25,14 @@ app.use('/api', apiRouter);
 
 // 404 Route Handler
 app.use((_req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+  res.status(404).json({
+    error: {
+      code: 'NOT_FOUND',
+      message: 'Endpoint not found',
+      fields: null,
+    },
+    message: 'Endpoint not found',
+  });
 });
 
 // Central Error Handler

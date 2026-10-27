@@ -185,7 +185,7 @@ export class ProductionService {
         [input.line_id, input.product_id]
       );
       if (mappingCheck.rows.length === 0) {
-        throw new AppError('Selected product is not permitted for this production line.', 400);
+        throw new AppError('Selected product is not permitted for this production line.', 400, null, 'INCOMPATIBLE_LINE_PRODUCT');
       }
 
       // 2. Concurrency-safe Daily Product Allocation Handling
@@ -206,7 +206,9 @@ export class ProductionService {
         const assignedName = prodDetails.rows[0]?.name || `Product ID ${allocatedProductId}`;
         throw new AppError(
           `Business Rule Violation: This line is already assigned to "${assignedName}" on ${input.production_date}. Only one product per production line per day is permitted.`,
-          409
+          409,
+          null,
+          'BUSINESS_RULE_VIOLATION'
         );
       }
 
@@ -218,7 +220,9 @@ export class ProductionService {
       if (existingRecordCheck.rows.length > 0) {
         throw new AppError(
           `A production record already exists for this line, date, and shift. Only one record per line/date/shift is permitted.`,
-          409
+          409,
+          null,
+          'DUPLICATE_SHIFT_RECORD'
         );
       }
 
@@ -284,7 +288,7 @@ export class ProductionService {
         [lineId, productId]
       );
       if (mappingCheck.rows.length === 0) {
-        throw new AppError('Selected product is not permitted for this production line.', 400);
+        throw new AppError('Selected product is not permitted for this production line.', 400, null, 'INCOMPATIBLE_LINE_PRODUCT');
       }
 
       // Check daily allocation
@@ -296,7 +300,9 @@ export class ProductionService {
       if (otherRecordsOnDay.rows.length > 0 && otherRecordsOnDay.rows[0].product_id !== productId) {
         throw new AppError(
           'Business Rule Violation: Other records on this date for this line are running a different product. Only one product per production line per day is permitted.',
-          409
+          409,
+          null,
+          'BUSINESS_RULE_VIOLATION'
         );
       }
 
@@ -308,7 +314,9 @@ export class ProductionService {
       if (duplicateShift.rows.length > 0) {
         throw new AppError(
           'A production record already exists for this line, date, and shift.',
-          409
+          409,
+          null,
+          'DUPLICATE_SHIFT_RECORD'
         );
       }
 
@@ -379,6 +387,126 @@ export class ProductionService {
     } finally {
       client.release();
     }
+  }
+
+  async exportRecordsCsv(filter: ProductionFilter): Promise<string> {
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (filter.line_id) {
+      conditions.push(`pr.line_id = $${paramIndex++}`);
+      params.push(filter.line_id);
+    }
+    if (filter.shift_id) {
+      conditions.push(`pr.shift_id = $${paramIndex++}`);
+      params.push(filter.shift_id);
+    }
+    if (filter.product_id) {
+      conditions.push(`pr.product_id = $${paramIndex++}`);
+      params.push(filter.product_id);
+    }
+    if (filter.startDate) {
+      conditions.push(`pr.production_date >= $${paramIndex++}`);
+      params.push(filter.startDate);
+    }
+    if (filter.endDate) {
+      conditions.push(`pr.production_date <= $${paramIndex++}`);
+      params.push(filter.endDate);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const sortBy = filter.sortBy || 'production_date';
+    const sortOrder = filter.sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    const recordsSql = `
+      SELECT 
+        pr.id,
+        pr.production_date::text,
+        pl.code AS line_code,
+        pl.name AS line_name,
+        s.code AS shift_code,
+        s.name AS shift_name,
+        p.sku AS product_sku,
+        p.name AS product_name,
+        pr.line_speed::float AS line_speed,
+        pr.units_produced,
+        pr.defect_units,
+        pr.good_units,
+        pr.energy_consumption_kwh::float AS energy_consumption_kwh,
+        ROUND((pr.energy_consumption_kwh::numeric / NULLIF(pr.units_produced, 0)::numeric), 4)::float AS energy_per_unit_kwh,
+        ROUND((pr.defect_units::numeric / NULLIF(pr.units_produced, 0)::numeric) * 100, 2)::float AS scrap_rate_pct,
+        pr.operator_name,
+        pr.notes,
+        pr.created_at::text AS created_at
+      FROM production_records pr
+      JOIN production_lines pl ON pr.line_id = pl.id
+      JOIN shifts s ON pr.shift_id = s.id
+      JOIN products p ON pr.product_id = p.id
+      ${whereClause}
+      ORDER BY pr.${sortBy} ${sortOrder}, pr.id DESC
+      LIMIT 10000
+    `;
+
+    const result = await query(recordsSql, params);
+
+    const escapeCsvCell = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const headers = [
+      'Record ID',
+      'Production Date',
+      'Line Code',
+      'Line Name',
+      'Shift Code',
+      'Shift Name',
+      'Product SKU',
+      'Product Name',
+      'Line Speed (u/h)',
+      'Units Produced',
+      'Defect Units',
+      'Good Units',
+      'Energy Consumption (kWh)',
+      'Energy per Unit (kWh/u)',
+      'Scrap Rate (%)',
+      'Operator Name',
+      'Notes',
+      'Logged At',
+    ];
+
+    const lines = [headers.join(',')];
+
+    for (const r of result.rows) {
+      const row = [
+        escapeCsvCell(r.id),
+        escapeCsvCell(r.production_date),
+        escapeCsvCell(r.line_code),
+        escapeCsvCell(r.line_name),
+        escapeCsvCell(r.shift_code),
+        escapeCsvCell(r.shift_name),
+        escapeCsvCell(r.product_sku),
+        escapeCsvCell(r.product_name),
+        escapeCsvCell(r.line_speed !== null ? Number(r.line_speed).toFixed(1) : '0.0'),
+        escapeCsvCell(r.units_produced),
+        escapeCsvCell(r.defect_units),
+        escapeCsvCell(r.good_units),
+        escapeCsvCell(r.energy_consumption_kwh !== null ? Number(r.energy_consumption_kwh).toFixed(2) : '0.00'),
+        escapeCsvCell(r.energy_per_unit_kwh !== null ? Number(r.energy_per_unit_kwh).toFixed(4) : '0.0000'),
+        escapeCsvCell(r.scrap_rate_pct !== null ? Number(r.scrap_rate_pct).toFixed(2) : '0.00'),
+        escapeCsvCell(r.operator_name),
+        escapeCsvCell(r.notes),
+        escapeCsvCell(r.created_at),
+      ];
+      lines.push(row.join(','));
+    }
+
+    return lines.join('\r\n');
   }
 }
 

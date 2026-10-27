@@ -16,6 +16,12 @@ productionRouter.get(
 );
 
 productionRouter.get(
+  '/export/csv',
+  validateQuery(productionFilterSchema),
+  (req, res, next) => productionController.exportCsv(req, res, next)
+);
+
+productionRouter.get(
   '/:id',
   (req, res, next) => productionController.getRecordById(req, res, next)
 );
