@@ -155,7 +155,7 @@ Run the full automated test suite:
 npm test
 ```
 
-### Verified Test Cases (21 / 21 Passed):
+### Verified Test Cases (35 / 35Passed):
 - **Compatibility Matrix Suite (`business-rules.test.ts`)**:
   1. Line 1 accepts Products 1, 2, 3, 4
   2. Line 1 rejects Product 5 with 400
