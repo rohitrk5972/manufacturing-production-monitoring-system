@@ -22,7 +22,7 @@ Engineered with **PostgreSQL 18.6**, **Node.js/Express (TypeScript)**, **React 1
 | **Operator Data Entry** | Operator form validating date, line, shift, compatible products, line speed, whole number quantity, energy consumption, and daily product lock | ✅ Verified in UI & API |
 | **Real PostgreSQL Analytics** | Zero hardcoded metrics. Direct SQL aggregations for:<br>• Total production for each shift (Shift A, B, C)<br>• Total daily production by line and product<br>• Total monthly production (using selected calendar month)<br>• Total energy consumed per shift<br>• Total daily energy consumption by line and product<br>• Total monthly energy consumption<br>• Line-speed trends across shifts<br>• Energy per unit (zero-division safe) | ✅ Verified in SQL queries & Recharts dashboard |
 | **Enterprise UI/UX** | Clean white/light workspace, deep navy navigation shell, restrained accents, readable tabular figures, and author footer credit | ✅ Verified |
-| **Automated Testing** | Vitest + Supertest test suites covering 21 comprehensive tests | ✅ 21 / 21 Passed |
+| **Automated Testing** | Vitest + Supertest test suites covering 21 comprehensive tests | ✅ 35 / 35 Passed |
 
 ---
 
